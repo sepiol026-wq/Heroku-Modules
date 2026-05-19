@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 @loader.tds
 class spotifyph(loader.Module):
+    """Progress bar current track in spotify"""
     
     strings = {
         "name": "spotify_ph",
@@ -28,9 +29,18 @@ class spotifyph(loader.Module):
         "no_prem_empty_end": "---]",
         "not_installed": "<b>SpotifyMod is not installed</b>",
         "nothing_plays": "<b>Nothing plays</b>",
-        "sp_duration_desc": "Progress bar (SpotifyMod)",
-        "sp_track_desc": "Show artist and song (SpotifyMod)",
+        "sp_duration_desc": "Progress bar",
+        "sp_track_desc": "Artist and song",
         "err": "<b>Error`</b>"
+    }
+
+    strings_ru = {
+        "_cls_doc": "Прогресс бар играющего трека в спотифай",
+        "not_installed": "<b>SpotifyMod не установлен</b>",
+        "nothing_plays": "<b>Ничего не играет</b>",
+        "sp_duration_desc": "Прогресс бар",
+        "sp_track_desc": "Автор и песня",
+        "err": "<b>Еррорь</b>"
     }
 
     async def client_ready(self, client, db):
