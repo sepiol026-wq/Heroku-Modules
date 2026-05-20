@@ -6,7 +6,7 @@
 # все же я не знаю трек или сонг, так что пусть будет трек, а не сонг потому что интуитивнее поняттнее,наверное?
 # крутой баннер да?
 #current version
-__version__ = (1, 1, 0)
+__version__ = (1, 1, 1)
 
 from herokutl.types import Message
 from .. import loader, utils
@@ -27,7 +27,7 @@ class YandexLyrics(loader.Module):
         "not_synced": "<i><tg-emoji emoji-id=5431445849026611010>⚠️</tg-emoji> Lyrics are not synchronized.</i>\n\n",
         "finished": "<tg-emoji emoji-id=5429638011392377649>‼️</tg-emoji> Playback ended or track changed.",
         "header": "<tg-emoji emoji-id=5429413328768224565>🎤</tg-emoji> <b>{} - {}</b>\n\n",
-        "timeout": "<b><tg-emoji emoji-id=5429455831764584284>⏳</tg-emoji></b><b> Упси, похоже кто то словил таймаут.</b>.",
+        "timeout": "<b><tg-emoji emoji-id=5429455831764584284>⏳</tg-emoji></b><b> Oopsi, looks like we've got a timeout here</b>.",
 
     }
 
@@ -39,8 +39,7 @@ class YandexLyrics(loader.Module):
         "not_synced": "<i><tg-emoji emoji-id=5431445849026611010>⚠️</tg-emoji> Текст не синхронизирован.</i>\n\n",
         "finished": "<tg-emoji emoji-id=5429638011392377649>‼️</tg-emoji> Воспроизведение завершено или трек сменился.",
         "header": "<tg-emoji emoji-id=5429413328768224565>🎤</tg-emoji> <b>{} - {}</b>\n\n",
-        "timeout": "<b><tg-emoji emoji-id=5429455831764584284>⏳</tg-emoji></b><b> Oopsi, looks like we've got a timeout here</b>.",
-
+        "timeout": "<b><tg-emoji emoji-id=5429455831764584284>⏳</tg-emoji></b><b> Упси, похоже кто то словил таймаут.</b>.",
     }
 
     def __init__(self):
@@ -123,7 +122,7 @@ class YandexLyrics(loader.Module):
                     rows.append(f"<code>{utils.escape_html(t)}</code>")
             return header + "\n".join(rows)
         else:
-            return header + not_synced_str + f"<code>{utils.escape_html((plain or '')[:600])}</code>"
+            return header + not_synced_str + f"<blockquote expandable>{utils.escape_html((plain or '')[:4000])}</blockquote>"
 
     def _markup(self, song_url):
         return [
@@ -208,9 +207,10 @@ class YandexLyrics(loader.Module):
                 self.strings["timeout"]
             )
         if not data or data.get("instrumental"):
+            track_and_artist = f"{utils.escape_html(track_name)} - {utils.escape_html(artist_name)}"
             return await utils.answer(
                 message,
-                self.strings("no_lyrics").format(utils.escape_html(track_name)),
+                self.strings("no_lyrics").format(track_and_artist),
             )
 
         synced_raw = data.get("syncedLyrics")
