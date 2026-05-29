@@ -6,10 +6,11 @@
 # все же я не знаю трек или сонг, так что пусть будет трек, а не сонг потому что интуитивнее поняттнее,наверное?
 # крутой баннер да?
 #current version
-__version__ = (1, 1, 1)
+__version__ = (1, 1, 2)
 
 from herokutl.types import Message
 from .. import loader, utils
+from ..types import InlineCall
 import aiohttp
 import asyncio
 import re
@@ -21,7 +22,8 @@ class SpotifyLyrics(loader.Module):
 
     strings = {
         "name": "SpotifyLyrics",
-        "no_spotifymod": "<tg-emoji emoji-id=5431402435497181911>💢</tg-emoji> <b>SpotifyMod not found.</b>",
+        "no_spotifymod": "<tg-emoji emoji-id=5431402435497181911>💢</tg-emoji> <b>SpotifyMod not found,but u can install it. You can also support developer: </b> @ke_mods",
+        "no_auth": "<tg-emoji emoji-id=5429225166250984904>⁉️</tg-emoji><b> You not authorized in SpotifyMod, visit you Saved Messages.</b>",
         "no_spotify": "<tg-emoji emoji-id=5429164207780152924>😅</tg-emoji> <b>Nothing is playing on Spotify.</b>",
         "no_lyrics": "<tg-emoji emoji-id=5431402435497181911>💢</tg-emoji> <b>Lyrics not found for:</b> <code>{}</code>",
         "not_synced": "<i><tg-emoji emoji-id=5431445849026611010>⚠️</tg-emoji> Lyrics are not synchronized.</i>\n\n",
@@ -32,7 +34,8 @@ class SpotifyLyrics(loader.Module):
 
     strings_ru = {
         "cls_doc": "Лайв слова текущей песни.",
-        "no_spotifymod": "<tg-emoji emoji-id=5431402435497181911>💢</tg-emoji> <b>SpotifyMod не найден.</b>",
+        "no_spotifymod": "<tg-emoji emoji-id=5431402435497181911>💢</tg-emoji> <b>SpotifyMod не найден,но его можно установить. Вы также можете поддержать разработчика: </b> @ke_mods",
+        "no_auth": "<tg-emoji emoji-id=5429225166250984904>⁉️</tg-emoji><b> Вы не авторизированы в SpotifyMod, перейдите в Избранное.</b>",
         "no_spotify": "<tg-emoji emoji-id=5429164207780152924>😅</tg-emoji> <b>В Spotify ничего не играет.</b>",
         "no_lyrics": "<tg-emoji emoji-id=5431402435497181911>💢</tg-emoji> <b>Текст не найден для:</b> <code>{}</code>",
         "not_synced": "<i><tg-emoji emoji-id=5431445849026611010>⚠️</tg-emoji> Текст не синхронизирован.</i>\n\n",
@@ -67,6 +70,28 @@ class SpotifyLyrics(loader.Module):
                 "timeout value",
             ),
         )
+
+    async def install_spotifymod(self, call: InlineCall):
+        mod_url = "https://raw.githubusercontent.com/radiocycle/Modules/refs/heads/master/SpotifyMod.py"
+        try:
+            m = self.lookup("Modules") or self.lookup("loader")
+            await m.download_and_install(mod_url)
+            await call.answer("SpotifyMod installed!", show_alert=True)
+            mod = self.lookup("SpotifyMod")
+            acs_tkn = mod.get("acs_tkn") if mod else None
+            if not acs_tkn:
+                await self.invoke("sauth", " ", "me")
+                await call.edit(
+                    self.strings("no_auth"),
+                    reply_markup=[[{"text": "Хорошо", "callback": self.close}]],
+                )
+            else:
+                await call.delete()
+        except Exception as e:
+            await call.answer(f"Error! Check logs.\n{e}", show_alert=True)
+
+    def close(self, call: InlineCall):
+        return call.delete()
 
     async def _get_lyrics(self, artist: str, track: str):
         clean_track = re.sub(r"\(.*?\)|\[.*?\]", "", track).strip()
@@ -182,8 +207,23 @@ class SpotifyLyrics(loader.Module):
     async def snowlcmd(self, message: Message):
         """- show synchronized lyrics for current Spotify track"""
         mod = self.lookup("SpotifyMod")
-        if not mod or not hasattr(mod, "sp") or not mod.sp:
-            return await utils.answer(message, self.strings("no_spotifymod"))
+        if not mod:
+            form = await self.inline.form("⏳", message=message)
+            await form.edit(
+                self.strings("no_spotifymod"),
+                reply_markup=[[{"text": "Install SpotifyMod", "callback": self.install_spotifymod}]],
+            )
+            return
+
+        acs_tkn = mod.get("acs_tkn")
+        if not acs_tkn:
+            await self.invoke("sauth", " ", "me")
+            form = await self.inline.form("⏳", message=message)
+            await form.edit(
+                self.strings("no_auth"),
+                reply_markup=[[{"text": "Хорошо", "callback": self.close}]],
+                )
+            return
 
         playback = mod.sp.current_playback()
         if not playback or not playback.get("item"):

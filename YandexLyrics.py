@@ -6,10 +6,11 @@
 # все же я не знаю трек или сонг, так что пусть будет трек, а не сонг потому что интуитивнее поняттнее,наверное?
 # крутой баннер да?
 #current version
-__version__ = (1, 1, 1)
+__version__ = (1, 1, 2)
 
 from herokutl.types import Message
 from .. import loader, utils
+from ..types import InlineCall
 import aiohttp
 import asyncio
 import re
@@ -21,7 +22,8 @@ class YandexLyrics(loader.Module):
 
     strings = {
         "name": "YandexLyrics",
-        "no_YaMusicMod": "<tg-emoji emoji-id=5431402435497181911>💢</tg-emoji> <b>YaMusicMod not found.</b>",
+        "no_YaMusicMod": "<tg-emoji emoji-id=5431402435497181911>💢</tg-emoji> <b>YaMusicMod not found,but u can install it. You can also support developer: </b> @codrago_m",
+        "no_auth": "<tg-emoji emoji-id=5429225166250984904>⁉️</tg-emoji><b> You not authorized in SpotifyMod, visit you Saved Messages and setup token to continue.</b>",
         "no_ym": "<tg-emoji emoji-id=5429164207780152924>😅</tg-emoji> <b>Nothing is playing on YaMusic.</b>",
         "no_lyrics": "<tg-emoji emoji-id=5431402435497181911>💢</tg-emoji> <b>Lyrics not found for:</b> <code>{}</code>",
         "not_synced": "<i><tg-emoji emoji-id=5431445849026611010>⚠️</tg-emoji> Lyrics are not synchronized.</i>\n\n",
@@ -33,7 +35,8 @@ class YandexLyrics(loader.Module):
 
     strings_ru = {
         "cls_doc": "Лайв слова текущей песни.",
-        "no_YaMusicMod": "<tg-emoji emoji-id=5431402435497181911>💢</tg-emoji> <b>YaMusic не найден.</b>",
+        "no_YaMusicMod": "<tg-emoji emoji-id=5431402435497181911>💢</tg-emoji> <b>YaMusicMod не найден,но его можно установить. Вы также можете поддержать разработчика: </b> @codrago_m",
+        "no_auth": "<tg-emoji emoji-id=5429225166250984904>⁉️</tg-emoji><b> Вы не авторизированы в YaMusicMod, перейдите в Избранное и установите токен для продолжения работы.</b>",
         "no_ym": "<tg-emoji emoji-id=5429164207780152924>😅</tg-emoji> <b>В YaMusic ничего не играет.</b>",
         "no_lyrics": "<tg-emoji emoji-id=5431402435497181911>💢</tg-emoji> <b>Текст не найден для:</b> <code>{}</code>",
         "not_synced": "<i><tg-emoji emoji-id=5431445849026611010>⚠️</tg-emoji> Текст не синхронизирован.</i>\n\n",
@@ -41,6 +44,7 @@ class YandexLyrics(loader.Module):
         "header": "<tg-emoji emoji-id=5429413328768224565>🎤</tg-emoji> <b>{} - {}</b>\n\n",
         "timeout": "<b><tg-emoji emoji-id=5429455831764584284>⏳</tg-emoji></b><b> Упси, похоже кто то словил таймаут.</b>.",
     }
+
 
     def __init__(self):
         self._active_tasks: dict = {}
@@ -68,6 +72,28 @@ class YandexLyrics(loader.Module):
                 "timeout value",
             ),
         )
+
+    async def install_yamusic(self, call: InlineCall):
+        mod_url = "https://raw.githubusercontent.com/coddrago/modules/main/YaMusic.py"
+        try:
+            m = self.lookup("Modules") or self.lookup("loader")
+            await m.download_and_install(mod_url)
+            await call.answer("YaMusicMod installed!", show_alert=True)
+            mod = self.lookup("YaMusicMod")
+            acs_tkn = mod.get("__config__")["token"] if mod else "****"
+            if not acs_tkn:
+                await self.invoke("yguide", " ", "me")
+                await call.edit(
+                    self.strings("no_auth"),    
+                    reply_markup=[[{"text": "Хорошо", "callback": self.close}]],
+                )
+            else:
+                await call.delete()
+        except Exception as e:
+            await call.answer(f"Error! Check logs.\n{e}", show_alert=True)
+
+    def close(self, call: InlineCall):
+        return call.delete()
 
     async def _get_lyrics(self, artist: str, track: str):
         clean_track = re.sub(r"\(.*?\)|\[.*?\]", "", track).strip()
@@ -184,8 +210,23 @@ class YandexLyrics(loader.Module):
         """- show synchronized lyrics for current YaMusic track"""
         mod = self.lookup("YaMusic")
         if not mod:
-            return await utils.answer(message, self.strings("no_YaMusicMod"))
+            form = await self.inline.form("⏳", message=message)
+            await form.edit(
+                self.strings("no_YaMusicMod"),
+                reply_markup=[[{"text": "Install YaMusic", "callback": self.install_yamusic}]],
+            )
+            return
 
+        ya_token = mod.get("__config__")["token"]
+        if not ya_token:
+            await self.invoke("yguide", " ", "me")
+            form = await self.inline.form("⏳", message=message)
+            await form.edit(
+                self.strings("no_auth"),
+                reply_markup=[[{"text": "Хорошо", "callback": self.close}]],
+                )
+            return
+        
         playback = await mod._YaMusicMod__get_now_playing()
         if not playback or not playback.get("track"):
             return await utils.answer(message, self.strings("no_ym"))
