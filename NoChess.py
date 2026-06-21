@@ -4,7 +4,6 @@
 # current ver
 __version__ = (2, 0, 0)
 
-botfather_photo_url = "https://r2.fakecrime.bio/uploads/d3e16245-15a2-43f1-b176-493b4d9f1f21.jpg"
 
 import asyncio
 import chess
@@ -528,53 +527,6 @@ class NoChessMod(loader.Module):
             raise RuntimeError(f"No serveo URL received: {buf_str}")
         return url
 
-    async def _auto_cma(self):
-        try:
-            from urllib.parse import urlencode, urlsplit, urlunsplit, parse_qsl
-            bot_username = (await self.inline.bot.get_me()).username
-            bot_username = (bot_username or "").strip().lstrip("@")
-            if not bot_username:
-                return None
-            web_url = (self.tunnel_url or "").strip()
-            if not web_url or "t.me/" in web_url:
-                return None
-            token = self.access_token
-            parsed = urlsplit(web_url)
-            query = dict(parse_qsl(parsed.query, keep_blank_values=True))
-            query["token"] = token
-            web_url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment))
-            await self._client.send_message("@BotFather", "/cancel")
-            await asyncio.sleep(0.9)
-            async with self._client.conversation("@BotFather", timeout=120) as conv:
-                await conv.send_message("/newapp")
-                await conv.get_response()
-                await asyncio.sleep(0.8)
-                await conv.send_message(f"@{bot_username}")
-                await conv.get_response()
-                await asyncio.sleep(0.8)
-                await conv.send_message("NoChessModule")
-                await conv.get_response()
-                await asyncio.sleep(0.8)
-                await conv.send_message("NoChess")
-                await conv.get_response()
-                await asyncio.sleep(0.8)
-                await conv.send_file(botfather_photo_url)
-                await conv.get_response()
-                await asyncio.sleep(0.8)
-                await conv.send_message("/empty")
-                await conv.get_response()
-                await asyncio.sleep(0.8)
-                await conv.send_message(web_url)
-                await conv.get_response()
-                await asyncio.sleep(0.8)
-                await conv.send_message("NoChess")
-                await conv.get_response()
-            direct_link = f"https://t.me/{bot_username}/NoChess"
-            self.config["mini_app_url"] = direct_link
-            return direct_link
-        except Exception:
-            return None
-
     async def send_form(self, message, url):
         await self.inline.form(
             self.strings["online"],
@@ -672,10 +624,6 @@ class NoChessMod(loader.Module):
         elif message.is_reply:
             await utils.answer(message, self.strings["already_running"])
 
-        mini_url = (self.config["mini_app_url"] or "").strip()
-        if not mini_url:
-            await self._auto_cma()
-
         game_id = self._new_game_id()
         board = chess.Board()
         my_id = str(getattr(self._me, "id", ""))
@@ -692,11 +640,7 @@ class NoChessMod(loader.Module):
             "created_at": int(time.time()),
         }
 
-        mini_url = (self.config["mini_app_url"] or "").strip().rstrip("/")
-        if mini_url.startswith("https://t.me/"):
-            game_url = f"{mini_url}?startapp={game_id}"
-        else:
-            game_url = f"{self.tunnel_url}/?game={game_id}"
+        game_url = f"{self.tunnel_url}/?game={game_id}"
         await self.send_form(message, game_url)
 
     @loader.command(

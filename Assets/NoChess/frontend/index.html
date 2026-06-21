@@ -166,7 +166,8 @@ canvas.height=BOARD_SIZE*BLOCK_SIZE*DPR
 ctx.scale(DPR,DPR)
 
 var params=new URLSearchParams(location.search)
-var gameId=params.get('game')||params.get('startapp')||''
+var gameId=params.get('game')||''
+try{if(!gameId&&window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.initDataUnsafe){gameId=window.Telegram.WebApp.initDataUnsafe.start_param||''}}catch(_){}
 var initData=''
 try{if(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.initData)initData=window.Telegram.WebApp.initData}catch(_){}
 var ws=null
