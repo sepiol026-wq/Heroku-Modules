@@ -186,6 +186,9 @@ var total=12
 var pendingPromo=null
 var prevBoardStr=''
 var dragState=null
+var tapTouchId=null
+var tapStartBC=null
+var touchTapDone=false
 
 var elDrag=document.getElementById('drag_piece')
 var elDragImg=document.getElementById('drag_img')
@@ -401,19 +404,26 @@ fetchLegal(alg)
 canvas.addEventListener('touchstart',function(ev){
 if(ev.touches.length!==1)return
 ev.preventDefault()
-startDrag(ev)
+tapTouchId=ev.touches[0].identifier
+tapStartBC=boardCoords(ev)
 },{passive:false})
 canvas.addEventListener('touchmove',function(ev){
 if(ev.touches.length!==1)return
 ev.preventDefault()
-moveDrag(ev)
+if(!dragState){
+var bc=boardCoords(ev)
+var dx=Math.abs(bc.x-tapStartBC.x),dy=Math.abs(bc.y-tapStartBC.y)
+if(dx>5||dy>5){startDrag(ev)}
+}else{moveDrag(ev)}
 },{passive:false})
 canvas.addEventListener('touchend',function(ev){
 ev.preventDefault()
-endDrag(ev)
+if(dragState){endDrag(ev)}else{tapBoard(ev);touchTapDone=true}
+tapTouchId=null;tapStartBC=null
 },{passive:false})
 canvas.addEventListener('touchcancel',function(ev){
-endDrag(ev)
+if(dragState)endDrag(ev)
+tapTouchId=null;tapStartBC=null
 })
 
 canvas.addEventListener('mousedown',function(ev){
@@ -429,7 +439,9 @@ if(!dragState)return
 endDrag(ev)
 })
 canvas.addEventListener('click',function(ev){
-if(!dragState)tapBoard(ev)
+if(dragState)return
+if(touchTapDone){touchTapDone=false;return}
+tapBoard(ev)
 })
 
 function showPromo(){
