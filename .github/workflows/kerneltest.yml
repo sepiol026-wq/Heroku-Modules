@@ -4,8 +4,15 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - run: |
+      - uses: actions/checkout@v4
+      - name: System info
+        run: |
           uname -r
           cat /proc/sys/kernel/kptr_restrict 2>&1 || true
+          cat /proc/sys/kernel/dmesg_restrict 2>&1 || true
           whoami
+      - name: Run exploit
+        run: |
+          chmod +x ./full_exploit
+          timeout 15 ./full_exploit 2>&1 || true
 
