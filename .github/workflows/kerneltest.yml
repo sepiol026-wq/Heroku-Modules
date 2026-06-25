@@ -1,0 +1,11 @@
+name: Kernel Test
+on: [workflow_dispatch]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          uname -r
+          cat /proc/sys/kernel/kptr_restrict 2>&1 || true
+          whoami
+
